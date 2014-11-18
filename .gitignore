@@ -6,6 +6,8 @@
 
 # R data files from past sessions
 .Rdata
+ProjectTwo_files/
+ProjectTwo_cache/
 
 # =========================
 # Operating System Files

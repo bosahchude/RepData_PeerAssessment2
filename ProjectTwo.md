@@ -1,0 +1,139 @@
+# Determining the effects of extreme weather on the population health and economy of the USA
+Bosah Chude  
+`r format(Sys.Date(), format='%B %d, %Y.')`  
+
+
+##Synopsis
+Severe weather events such as storms, floods and hail can cause both public health and economic problems for communities and municipalities. Such events have resulted in thousands of fatalities, injuries, and millions worth of property damage. The current report addresses the following questions in order to provide new insights that allow preventing such outcomes to the extent possible: 
+
+* Across the United States, which types of events are most harmful with respect to population health? 
+
+* Across the United States, which types of events have the greatest economic consequences? 
+
+##Data Processing
+
+This analysis is based on raw data from the U.S. National Oceanic and Atmospheric Administration (NOAA).
+
+The code block below retrieves the archived files from NOAA servers. After retrieval, the data is saved as an R object to disk for easy manipulation.
+
+```r
+#Download Data
+if (!file.exists("StormData.csv.bz2")) {
+     fileName <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
+     download.file(fileName, 'StormData.csv.bz2', method="curl")
+     
+     #Get only required columns
+     stormData <- read.csv("StormData.csv.bz2", stringsAsFactors = FALSE, header = TRUE, sep = ",") 
+     tidyStormData <- stormData[, c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "CROPDMG")]
+     
+     #Save tidy data to disk
+     save(tidyStormData, file="tidyStormData.rda")
+}
+```
+Next, required libraries are loaded into the workspace.
+
+```r
+#Load Required Libraries
+library(ggplot2)
+library(gridExtra)
+```
+Importing the data into the workspace.
+
+```r
+#Load saved objects
+load("tidyStormData.rda")
+
+#Display column names.
+colnames(tidyStormData)
+```
+
+```
+## [1] "EVTYPE"     "FATALITIES" "INJURIES"   "PROPDMG"    "CROPDMG"
+```
+We are interested in only these five columns of the data frame.
+
+* `EVTYPE` describes the event in question.
+* `FATALITIES` and `INJURIES` quantify the effect of the extreme weather to public health.
+* `PROPDMG` and `CROPDMG` quantify damage to the economy from crop and property damage.
+
+
+```r
+#Extracting only the required columns
+tidyStormData$EVTYPE <- factor(toupper(tidyStormData$EVTYPE))
+
+#Using tapply, I caclulate the sum for each case per event.
+fatalitySum <- tapply(tidyStormData$FATALITIES, tidyStormData$EVTYPE, sum, na.rm = TRUE)
+injurySum <- tapply(tidyStormData$INJURIES, tidyStormData$EVTYPE, sum, na.rm = TRUE)
+propertyDamageSum <- tapply(tidyStormData$PROPDMG, tidyStormData$EVTYPE, sum, na.rm = TRUE)
+cropDamageSum <- tapply(tidyStormData$CROPDMG, tidyStormData$EVTYPE, sum, na.rm = TRUE)
+
+#Sorting the data by descending order and retiving the top ten.
+fatalitySum <- sort(fatalitySum, decreasing = TRUE)[1:10]
+injurySum <- sort(injurySum, decreasing = TRUE)[1:10]
+propertyDamageSum <- sort(propertyDamageSum, decreasing = TRUE)[1:10]
+cropDamageSum <- sort(cropDamageSum, decreasing = TRUE)[1:10]
+```
+Data processing done. Moving on to next steps.
+
+##Results
+
+In this section, we would display the results from our data processing section.
+
+The `ggplot` library would be used to make explanatory plots.
+
+### 1. Most harmful event to population health.
+In order to determine the the weather condition with the most hazardous effect on population health, I made a panel plot containing the top events that cause fatalities and injuries.
+
+```r
+#Fatality
+fatalitySumNames <- factor(names(fatalitySum))
+fatalityPlot <- qplot(x = fatalitySumNames, y = fatalitySum, fill = fatalitySumNames, 
+                      geom = "bar", stat = "identity", ylab="", xlab="", main = "Fatalities") + 
+                theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position="none")
+
+#Injuries
+injurySumNames <- factor(names(injurySum))
+injuryPlot <- qplot(x = injurySumNames, y = injurySum, fill = injurySumNames, 
+                    geom="bar", stat="identity", ylab="", xlab="", main = "Injuries") + 
+                theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position="none")
+
+grid.arrange(fatalityPlot, injuryPlot, ncol = 2)
+```
+
+<img src="./ProjectTwo_files/figure-html/unnamed-chunk-2-1.png" title="" alt="" style="display: block; margin: auto;" />
+From the above plot Tornado leads as the highest cause of fatalities and injures making them the most harmful weather condition to population health in the USA.
+
+### 2. Event with the greatest economic consequences.
+In this case I examine both the property and crop damage numbers on a Graph. 
+
+The top ten culprits in property and crop damage are displayed below.
+
+```r
+#Property Damage
+propertyDamageSumNames <- factor(names(propertyDamageSum))
+propertyPlot <- qplot(x = propertyDamageSumNames, y = propertyDamageSum, fill = propertyDamageSumNames, 
+                      geom="bar", stat="identity", ylab="", xlab="", main = "Property Damages") + 
+                theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position="none")
+     			
+#Crop Damage
+cropDamageSumNames <- factor(names(cropDamageSum))
+cropDamagePlot <- qplot(x = cropDamageSumNames, y = cropDamageSum, fill = cropDamageSumNames,
+                        geom="bar", stat="identity", ylab="", xlab="", main = "Crop Damages") + 
+                theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position="none")
+
+grid.arrange(propertyPlot, cropDamagePlot, ncol = 2)
+```
+
+<img src="./ProjectTwo_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" style="display: block; margin: auto;" />
+
+From the above graph, Hail does a lot of damage to crops while tornado causes lots of damaged property. However, the cumulative damage done by hail surpasses the cumulative damage done by Tornadoes.
+
+This makes Hail the event of most economic consequence. 
+
+##Summary
+Based on these results, **Tornado** is most harmful with respect to population health. The greatest economic damage is caused by **Hail**.
+
+##References
+* [National Weather Service Storm Data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2)
+* [National Weather Service Storm Data Documentation.](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+* [National Climatic Data Center Storm Events FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
